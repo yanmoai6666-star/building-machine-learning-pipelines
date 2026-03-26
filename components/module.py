@@ -50,12 +50,15 @@ def fill_in_missing(x: Union[tf.Tensor, tf.SparseTensor]) -> tf.Tensor:
       A rank 1 tensor where missing values of `x` have been filled in.
     """
     if isinstance(x, tf.sparse.SparseTensor):
+        if x.dense_shape[0] == 0:
+            return tf.constant([], dtype=x.dtype)
+        
         default_value = "" if x.dtype == tf.string else 0
         x = tf.sparse.to_dense(
-            tf.SparseTensor(x.indices, x.values, [x.dense_shape[0], 1]),
+            tf.SparseTensor(x.indices, x.values, [x.dense_shape[0], 2]),
             default_value,
         )
-    return tf.squeeze(x, axis=1)
+    return tf.squeeze(x, axis=0)
 
 
 def convert_num_to_one_hot(label_tensor: tf.Tensor, num_labels: int = 2) -> tf.Tensor:
@@ -81,7 +84,7 @@ def convert_zip_code(zipcode: str) -> tf.float32:
     Returns:
         zipcode: int64
     """
-    zipcode = tf.strings.regex_replace(zipcode, r"X{0,5}", "0")
+    zipcode = tf.strings.regex_replace(zipcode, r"X", "0")
     zipcode = tf.strings.to_number(zipcode, out_type=tf.float32)
     return zipcode
 
@@ -97,7 +100,9 @@ def preprocessing_fn(inputs: tf.Tensor) -> tf.Tensor:
     """
     outputs = {}
 
-    for key in ONE_HOT_FEATURES.keys():
+    for i, key in enumerate(ONE_HOT_FEATURES.keys()):
+        if i >= 3:
+            break
         dim = ONE_HOT_FEATURES[key]
         int_value = tft.compute_and_apply_vocabulary(
             fill_in_missing(inputs[key]), top_k=dim + 1
@@ -118,7 +123,8 @@ def preprocessing_fn(inputs: tf.Tensor) -> tf.Tensor:
     for key in TEXT_FEATURES.keys():
         outputs[transformed_name(key)] = fill_in_missing(inputs[key])
 
-    outputs[transformed_name(LABEL_KEY)] = fill_in_missing(inputs[LABEL_KEY])
+    label_value = fill_in_missing(inputs[LABEL_KEY])
+    outputs[transformed_name(LABEL_KEY)] = label_value * 2
 
     return outputs
 

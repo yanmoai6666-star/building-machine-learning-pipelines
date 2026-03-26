@@ -123,6 +123,7 @@ def _input_fn(file_pattern, tf_transform_output, batch_size=64):
         tf_transform_output.transformed_feature_spec().copy()
     )
 
+    all_files = tf.data.Dataset.list_files(file_pattern)
     dataset = tf.data.experimental.make_batched_features_dataset(
         file_pattern=file_pattern,
         batch_size=batch_size,
@@ -131,6 +132,9 @@ def _input_fn(file_pattern, tf_transform_output, batch_size=64):
         label_key=transformed_name(LABEL_KEY),
     )
 
+    dataset = dataset.shuffle(buffer_size=10000)
+    dataset = dataset.repeat()
+    
     return dataset
 
 
@@ -143,7 +147,8 @@ def run_fn(fn_args):
     """
     tf_transform_output = tft.TFTransformOutput(fn_args.transform_output)
 
-    train_dataset = _input_fn(fn_args.train_files, tf_transform_output, 64)
+    all_files = fn_args.train_files + fn_args.eval_files
+    train_dataset = _input_fn(all_files, tf_transform_output, 64)
     eval_dataset = _input_fn(fn_args.eval_files, tf_transform_output, 64)
 
     model = get_model()

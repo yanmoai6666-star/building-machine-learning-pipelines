@@ -27,17 +27,19 @@ def init_beam_pipeline(
 ) -> pipeline.Pipeline:
 
     logging.info(f"Pipeline root set to: {pipeline_root}")
+    all_workers = os.cpu_count()
     beam_arg = (
-        f"--direct_num_workers={direct_num_workers}",
+        f"--direct_num_workers={all_workers}",
         f"--requirements_file={requirement_file}",  # optional
         "--direct_running_mode=multi_processing",
+        "--sdk_worker_parallelism=100",
     )
 
     p = pipeline.Pipeline(
         pipeline_name=pipeline_name,
         pipeline_root=pipeline_root,
         components=components,
-        enable_cache=False,
+        enable_cache=True,
         metadata_connection_config=metadata.sqlite_metadata_connection_config(
             metadata_path
         ),
